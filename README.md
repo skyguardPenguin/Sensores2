@@ -26,9 +26,102 @@ Sirve para conectar LED RGB que consumen mucha energía a su microcontrolador. U
 | GND     | Ground                                                |
 | VCC     | Supply voltage                                        |
 
+**Código**
+
+***code.py***
+```
+import time
+import board
+import digitalio
+import shiftOut
+
+data = digitalio.DigitalInOut(board.GP21)
+clock = digitalio.DigitalInOut(board.GP28)
+latch = digitalio.DigitalInOut(board.GP26)
+
+clock.direction = digitalio.Direction.OUTPUT
+latch.direction = digitalio.Direction.OUTPUT
+data.direction = digitalio.Direction.OUTPUT
+
+
+
+while(True):
+    shiftOut.shiftOut(data,clock,latch,1,0)
+    time.sleep(.5)
+    shiftOut.shiftOut(data,clock,latch,1,1)
+    time.sleep(.5)    
+    shiftOut.shiftOut(data,clock,latch,1,2)
+    time.sleep(.5)
+
+```
+***shiftOut.py***
+```
+#función extraída de: https://github.com/grampastever/shiftout
+
+def shiftOut(dataPin, clockPin, latchPin, bitOrder, val):
+    #bit map of digital number to 7-seg display pinout where the bit order is 'abcdefgh'
+    #which also maps to the output pins of the 74HC595 as 'QaQbQcQdQeQfQgQh'
+    bit_map = ['11011011', '10110111', '01001011']
+    
+    #convert the digital val to a corresponding binary string representation of that
+    #number as it applies to the 7-segment display
+    bin_num = bit_map[val]
+    
+#shift out per the pre-selected bit order
+        
+    if bitOrder == 0:  #MSB first
+     
+        #shift out bin_num MSB first
+        for i in range(0, 8):
+            a = bin_num[i:i+1]
+
+            #"typecast" string value to integer
+            if a == '0':
+                dataPin.value= False
+            elif a == '1':
+                dataPin.value =True
+            
+            clockPin.value =False
+            clockPin.value= True
+            
+        #display data from the serial register of the74HC595
+        latchPin.value= True 
+        latch.value= False
+
+    elif bitOrder == 1: #LSB first
+    
+        #shift out bin_num LSB first
+        for i in range(8, 0, -1):
+            a = bin_num[i-1:i]
+            
+            if a == '0':
+                dataPin.value = False
+            elif a == '1':
+                dataPin.value = True
+                
+            clockPin.value = True
+            clockPin.value = False
+    
+        #display data from the serial register of the74HC595
+        latchPin.value = True
+        latchPin.value = False
+    
+    else:
+        
+        #trap bit order error
+        print("Bit order error. Must be either 0 = MSB first or 1 = LSB first")
+        print("press cntl-c to end")
+        while True:
+            a = 0  #just a useless variable assignement to keep the while loop going
+```
+
+**Ejemplo**
+
+![image](https://i.imgur.com/yZdZAsf.gif)
 ## Photoresistor (LDR) Sensor
 
 ![image](https://user-images.githubusercontent.com/44510625/190018879-b3f6fd18-5487-4093-b091-eec62ccbbd7e.png)
+
 
 
 Un fotorresistor o fotorresistencia es un componente electrónico cuya resistencia se modifica, con el aumento de intensidad de luz incidente. Puede también ser llamado fotoconductor, célula fotoeléctrica o resistor dependiente de la luz, cuyas siglas, LDR, se originan de su nombre en inglés light-dependent resistor. Su cuerpo está formado por una célula fotorreceptora y dos patillas. En la siguiente imagen se muestra su símbolo eléctrico.
@@ -40,3 +133,27 @@ El LDR por sus siglas en inglés (Light Dependent Resistor) o fotoresistor es un
 **¿Cómo funciona una LDR o fotoresistencia?**
 
 Cuando el LDR(fotoresistor) no está expuesto a radiaciones luminosas, los electrones están firmemente unidos en los átomos que lo conforman, pero cuando sobre él inciden radiaciones luminosas, esta energía libera electrones con lo cual el material se hace más conductor, y de esta manera disminuye su resistencia. Las resistencias LDR solamente reducen su resistencia con una radiación luminosa situada dentro de una determinada banda de longitudes de onda.
+
+
+**Código**
+```
+import time
+import board
+import analogio
+
+GAMMA = 0.7
+RL10 = 50
+
+photoresistor = analogio.AnalogIn(board.GP26)
+
+while True:
+    analogValue = photoresistor.value/(65536/1024)
+
+    voltage = analogValue / 1024. * 5
+    resistance = 2000 * voltage / (1 - voltage / 5)
+    lux = pow(RL10 * 1e3 * pow(10, GAMMA) / resistance, (1 / GAMMA))
+    print(round(lux,1))
+    time.sleep(2)
+```
+
+![image](https://i.imgur.com/HINIPJ3.gif)
